@@ -3,8 +3,8 @@
 #include "ColliderFit.h"
 #include "ColliderGeometry.h"
 #include "ColliderPrimitiveNode.h"
-#include "DDConvexHullNode.h"
-#include "DDConvexHullUtils.h"
+#include "ColliderHullNode.h"
+#include "ColliderHull.h"
 
 #include <maya/MArgDatabase.h>
 #include <maya/MFnDagNode.h>
@@ -250,7 +250,7 @@ MStatus conformMeshNormals(const MObject& shape)
     return MStatus::kSuccess;
 }
 
-MStatus createHull(const MPointArray& points, const DDConvexHullUtils::hullOpts& options, const MString& name, MObject& transform)
+MStatus createHull(const MPointArray& points, const ColliderTools::HullOptions& options, const MString& name, MObject& transform)
 {
     const MPointArray cleanPoints = ColliderTools::cleanPointSet(points);
     if (cleanPoints.length() < 4)
@@ -278,12 +278,12 @@ MStatus createHull(const MPointArray& points, const DDConvexHullUtils::hullOpts&
         return status;
     }
 
-    status = DDConvexHullUtils::generateMayaHull(meshData, cleanPoints, options);
+    status = ColliderTools::createHullMeshData(meshData, cleanPoints, options);
     if (!status && options.maxOutputVertices < 4096)
     {
-        DDConvexHullUtils::hullOpts fallbackOptions = options;
+        ColliderTools::HullOptions fallbackOptions = options;
         fallbackOptions.maxOutputVertices = 4096;
-        status = DDConvexHullUtils::generateMayaHull(meshData, cleanPoints, fallbackOptions);
+        status = ColliderTools::createHullMeshData(meshData, cleanPoints, fallbackOptions);
     }
     if (!status)
     {
@@ -501,12 +501,12 @@ MStatus connectHistoryNode(const MDagPath& sourcePath, const MObject& component,
             {
                 return status;
             }
-            MPlug inputMesh = inputElement.child(DDConvexHullNode::inputPolymeshAttr, &status);
+            MPlug inputMesh = inputElement.child(ColliderHullNode::inputPolymeshAttr, &status);
             if (!status)
             {
                 return status;
             }
-            MPlug inputComponents = inputElement.child(DDConvexHullNode::inputComponentsAttr, &status);
+            MPlug inputComponents = inputElement.child(ColliderHullNode::inputComponentsAttr, &status);
             if (!status)
             {
                 return status;
@@ -529,7 +529,7 @@ MStatus connectHistoryNode(const MDagPath& sourcePath, const MObject& component,
     return dgModifier.doIt();
 }
 
-MStatus createHistoryCollider(const MString& type, const MDagPath& sourcePath, const MObject& component, int segments, const DDConvexHullUtils::hullOpts& hullOptions, const MString& name, MObject& transform, MObject& historyNode)
+MStatus createHistoryCollider(const MString& type, const MDagPath& sourcePath, const MObject& component, int segments, const ColliderTools::HullOptions& hullOptions, const MString& name, MObject& transform, MObject& historyNode)
 {
     MStatus status;
     MObject shape;
@@ -554,7 +554,7 @@ MStatus createHistoryCollider(const MString& type, const MDagPath& sourcePath, c
     MFnDependencyNode historyFn;
     if (type == "hull")
     {
-        historyNode = historyFn.create("DDConvexHull", MString(name) + "History", &status);
+        historyNode = historyFn.create(ColliderHullNode::typeName, MString(name) + "History", &status);
         if (!status)
         {
             return status;
@@ -691,7 +691,7 @@ MStatus ColliderCreateCmd::doIt(const MArgList& args)
         argData.getFlagArgument(kHistoryFlag, 0, history);
     }
 
-    DDConvexHullUtils::hullOpts hullOptions;
+    ColliderTools::HullOptions hullOptions;
     hullOptions.forceTriangles = true;
     if (argData.isFlagSet(kMaxVerticesFlag))
     {

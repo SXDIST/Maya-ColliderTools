@@ -1,12 +1,11 @@
 # CMake / build outputs
-build*/
-build-vs2026-devkitbase-env/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 install_manifest.txt
 install_local_manifest.txt
 *.sln
+*.slnx
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user

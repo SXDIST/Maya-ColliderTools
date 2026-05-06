@@ -1,62 +1,8 @@
-/*!
-**
-** Copyright (c) 2007 by John W. Ratcliff mailto:jratcliff@infiniplex.net
-**
-** Portions of this source has been released with the PhysXViewer application, as well as
-** Rocket, CreateDynamics, ODF, and as a number of sample code snippets.
-**
-** If you find this code useful or you are feeling particularily generous I would
-** ask that you please go to http://www.amillionpixels.us and make a donation
-** to Troy DeMolay.
-**
-** DeMolay is a youth group for young men between the ages of 12 and 21.
-** It teaches strong moral principles, as well as leadership skills and
-** public speaking.  The donations page uses the 'pay for pixels' paradigm
-** where, in this case, a pixel is only a single penny.  Donations can be
-** made for as small as $4 or as high as a $100 block.  Each person who donates
-** will get a link to their own site as well as acknowledgement on the
-** donations blog located here http://www.amillionpixels.blogspot.com/
-**
-** If you wish to contact me you can use the following methods:
-**
-** Skype Phone: 636-486-4040 (let it ring a long time while it goes through switches)
-** Skype ID: jratcliff63367
-** Yahoo: jratcliff63367
-** AOL: jratcliff1961
-** email: jratcliff@infiniplex.net
-** Personal website: http://jratcliffscarab.blogspot.com
-** Coding Website:   http://codesuppository.blogspot.com
-** FundRaising Blog: http://amillionpixels.blogspot.com
-** Fundraising site: http://www.amillionpixels.us
-** New Temple Site:  http://newtemple.blogspot.com
-**
-**
-** The MIT license:
-**
-** Permission is hereby granted, free of charge, to any person obtaining a copy
-** of this software and associated documentation files (the "Software"), to deal
-** in the Software without restriction, including without limitation the rights
-** to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-** copies of the Software, and to permit persons to whom the Software is furnished
-** to do so, subject to the following conditions:
-**
-** The above copyright notice and this permission notice shall be included in all
-** copies or substantial portions of the Software.
-
-** THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-** IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-** FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-** AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-** WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-** CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-*/
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <vector>
 #include <math.h>
 #include <float.h>
 
@@ -64,22 +10,122 @@
 #include <stdarg.h>
 #include <setjmp.h>
 
-#include "hull.h"
+#include "ColliderHullCore.h"
 
-#define STANDALONE 1  // This #define is used when tranferring this source code to other projects
+static void* hullCoreAlloc(size_t size)
+{
+	return malloc(size);
+}
 
-#if STANDALONE
+static void hullCoreFree(void* pointer)
+{
+	free(pointer);
+}
 
-#undef NX_ALLOC
-#undef NX_FREE
+namespace NxFoundation
+{
+class NxAllocateable
+{
+};
+}
 
-#define NX_ALLOC(x,y) malloc(x)
-#define NX_FREE(x) free(x)
+#define CONVEX_TEMP 0
+#define NX_NEW_MEM(exp, id) new exp
 
-#else
-#include "Allocateable.h"
-#endif
+namespace ColliderTools
+{
+namespace HullCore
+{
 
+class HullResult
+{
+public:
+	HullResult(void)
+	{
+		mPolygons = true;
+		mNumOutputVertices = 0;
+		mOutputVertices = 0;
+		mNumFaces = 0;
+		mNumIndices = 0;
+		mIndices = 0;
+	}
+	bool                    mPolygons;
+	unsigned int            mNumOutputVertices;
+	double                  *mOutputVertices;
+	unsigned int            mNumFaces;
+	unsigned int            mNumIndices;
+	unsigned int           *mIndices;
+};
+
+enum HullFlag
+{
+	QF_TRIANGLES         = (1<<0),
+	QF_REVERSE_ORDER     = (1<<1),
+	QF_SKIN_WIDTH        = (1<<2),
+	QF_DEFAULT           = 0
+};
+
+class HullDesc
+{
+public:
+	HullDesc(void)
+	{
+		mFlags          = QF_DEFAULT;
+		mVcount         = 0;
+		mVertices       = 0;
+		mVertexStride   = 0;
+		mNormalEpsilon  = 0.001f;
+		mMaxVertices = 4096;
+		mSkinWidth = 0.01f;
+	};
+
+	bool HasHullFlag(HullFlag flag) const
+	{
+		if ( mFlags & flag ) return true;
+		return false;
+	}
+
+	unsigned int      mFlags;
+	unsigned int      mVcount;
+	double           *mVertices;
+	unsigned int      mVertexStride;
+	double            mNormalEpsilon;
+	double            mSkinWidth;
+	unsigned int      mMaxVertices;
+};
+
+enum HullError
+{
+	QE_OK,
+	QE_FAIL
+};
+
+class ConvexHullVertex
+{
+public:
+	double         mPos[3];
+	double         mNormal[3];
+	double         mTexel[2];
+};
+
+class ConvexHullTriangleInterface
+{
+public:
+	virtual void ConvexHullTriangle(const ConvexHullVertex &v1,const ConvexHullVertex &v2,const ConvexHullVertex &v3) = 0;
+};
+
+class HullLibrary
+{
+public:
+	HullError CreateConvexHull(const HullDesc &desc, HullResult &result);
+	HullError ReleaseResult(HullResult &result);
+	HullError CreateTriangleMesh(HullResult &answer, ConvexHullTriangleInterface *iface);
+private:
+	double ComputeNormal(double *n,const double *A,const double *B,const double *C);
+	void AddConvexTriangle(ConvexHullTriangleInterface *callback,const double *p1,const double *p2,const double *p3);
+	void BringOutYourDead(const double *verts,unsigned int vcount, double *overts,unsigned int &ocount,unsigned int *indices,unsigned indexcount);
+	bool CleanupVertices(unsigned int svcount, const double *svertices, unsigned int stride, unsigned int &vcount, double *vertices, double normalepsilon, double *scale);
+};
 
 //*****************************************************
 //*** DARRAY.H
@@ -170,10 +216,7 @@ template <class Type> Array<Type> &Array<Type>::operator=(Array<Type> &array)
 
 template <class Type> Array<Type>::~Array()
 {
-	if (element != NULL)
-	{
-	  NX_FREE(element);
-	}
+	delete[] element;
 	count=0;array_size=0;element=NULL;
 }
 
@@ -183,27 +226,21 @@ template <class Type> void Array<Type>::allocate(int s)
 	assert(s>=count);
 	Type *old = element;
 	array_size =s;
-	element = (Type *) NX_ALLOC( sizeof(Type)*array_size, CONVEX_TEMP );
+	element = new Type[array_size];
 	assert(element);
 	for(int i=0;i<count;i++)
 	{
 		element[i]=old[i];
 	}
-	if(old)
-	{
-		NX_FREE(old);
-	}
+	delete[] old;
 }
 
 template <class Type> void Array<Type>::SetSize(int s)
 {
 	if(s==0)
 	{
-		if(element)
-		{
-			NX_FREE(element);
-			element = NULL;
-		}
+		delete[] element;
+		element = NULL;
  	  array_size = s;
 	}
 	else
@@ -1617,6 +1654,8 @@ public:
 		mFaceCount = 0;
 		mVertices = 0;
 		mIndices  = 0;
+		mOwnsVerticesAsArray = false;
+		mOwnsIndicesAsInt3Array = false;
 	}
 
 	unsigned int mVcount;
@@ -1624,6 +1663,8 @@ public:
 	unsigned int mFaceCount;
 	double       *mVertices;
 	unsigned int *mIndices;
+	bool mOwnsVerticesAsArray;
+	bool mOwnsIndicesAsInt3Array;
 };
 
 bool ComputeHull(unsigned int vcount,const double *vertices,PHullResult &result,unsigned int maxverts,double inflate);
@@ -2828,7 +2869,7 @@ static int overhull(Plane *planes,int planes_count,double3 *verts, int verts_cou
 
 	assert(AssertIntact(*c));
 	//return c;
-	faces_out = (int*)NX_ALLOC(sizeof(int)*(1+c->facets.count+c->edges.count), CONVEX_TEMP);     // new int[1+c->facets.count+c->edges.count];
+	faces_out = (int*)hullCoreAlloc(sizeof(int)*(1+c->facets.count+c->edges.count));     // new int[1+c->facets.count+c->edges.count];
 	faces_count_out=0;
 	i=0;
 	faces_out[faces_count_out++]=-1;
@@ -2913,13 +2954,15 @@ bool ComputeHull(unsigned int vcount,const double *vertices,PHullResult &result,
 		k+=pn;
 	}
 	assert(tris.count == index_count-1-(n*3));
-	NX_FREE(faces);	// PT: I added that. Is it ok ?
+	hullCoreFree(faces);	// PT: I added that. Is it ok ?
 
 	result.mIndexCount = (unsigned int) (tris.count*3);
 	result.mFaceCount  = (unsigned int) tris.count;
 	result.mVertices   = (double*) verts_out;
 	result.mVcount     = (unsigned int) verts_count_out;
 	result.mIndices    = (unsigned int *) tris.element;
+	result.mOwnsVerticesAsArray = true;
+	result.mOwnsIndicesAsInt3Array = true;
 	tris.element=NULL; tris.count = tris.array_size=0;
 	tris.SetSize(0); //have to set the size to 0 in order to protect from a "pure virtual function call" problem
 
@@ -2929,13 +2972,28 @@ bool ComputeHull(unsigned int vcount,const double *vertices,PHullResult &result,
 
 void ReleaseHull(PHullResult &result)
 {
-NX_FREE(result.mIndices);	// PT: I added that. Is it ok ?
-NX_FREE(result.mVertices);	// PT: I added that. Is it ok ?
+	if (result.mOwnsIndicesAsInt3Array)
+	{
+		delete[] reinterpret_cast<int3*>(result.mIndices);
+	}
+	else
+	{
+		delete[] result.mIndices;
+	}
+	if (result.mOwnsVerticesAsArray)
+	{
+		delete[] reinterpret_cast<double3*>(result.mVertices);
+	}
+	else
+	{
+		hullCoreFree(result.mVertices);
+	}
 	result.mVcount = 0;
 	result.mIndexCount = 0;
 	result.mIndices = 0;
 	result.mVertices = 0;
-	result.mIndices  = 0;
+	result.mOwnsVerticesAsArray = false;
+	result.mOwnsIndicesAsInt3Array = false;
 }
 
 
@@ -2954,7 +3012,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 	unsigned int vcount = desc.mVcount;
 	if ( vcount < 8 ) vcount = 8;
 
-	double *vsource  = (double *) NX_ALLOC( sizeof(double)*vcount*3, CONVEX_TEMP );
+	double *vsource  = (double *) hullCoreAlloc(sizeof(double)*vcount*3);
 
 
 	double scale[3];
@@ -3046,7 +3104,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 		{
 
 			// re-index triangle mesh so it refers to only used vertices, rebuild a new vertex table.
-			double *vscratch = (double *) NX_ALLOC( sizeof(double)*hr.mVcount*3, CONVEX_TEMP );
+			double *vscratch = (double *) hullCoreAlloc(sizeof(double)*hr.mVcount*3);
 			BringOutYourDead(hr.mVertices,hr.mVcount, vscratch, ovcount, hr.mIndices, hr.mIndexCount );
 
 			ret = QE_OK;
@@ -3055,11 +3113,11 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 			{
 				result.mPolygons          = false;
 				result.mNumOutputVertices = ovcount;
-				result.mOutputVertices    = (double *)NX_ALLOC( sizeof(double)*ovcount*3, CONVEX_TEMP );
+				result.mOutputVertices    = (double *)hullCoreAlloc(sizeof(double)*ovcount*3);
 				result.mNumFaces          = hr.mFaceCount;
 				result.mNumIndices        = hr.mIndexCount;
 
-				result.mIndices           = (unsigned int *) NX_ALLOC( sizeof(unsigned int)*hr.mIndexCount, CONVEX_TEMP );
+				result.mIndices           = (unsigned int *) hullCoreAlloc(sizeof(unsigned int)*hr.mIndexCount);
 
 				memcpy(result.mOutputVertices, vscratch, sizeof(double)*3*ovcount );
 
@@ -3088,10 +3146,10 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 			{
 				result.mPolygons          = true;
 				result.mNumOutputVertices = ovcount;
-				result.mOutputVertices    = (double *)NX_ALLOC( sizeof(double)*ovcount*3, CONVEX_TEMP );
+				result.mOutputVertices    = (double *)hullCoreAlloc(sizeof(double)*ovcount*3);
 				result.mNumFaces          = hr.mFaceCount;
 				result.mNumIndices        = hr.mIndexCount+hr.mFaceCount;
-				result.mIndices           = (unsigned int *) NX_ALLOC( sizeof(unsigned int)*result.mNumIndices, CONVEX_TEMP );
+				result.mIndices           = (unsigned int *) hullCoreAlloc(sizeof(unsigned int)*result.mNumIndices);
 				memcpy(result.mOutputVertices, vscratch, sizeof(double)*3*ovcount );
 
 				if ( 1 )
@@ -3127,7 +3185,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 
 			if ( vscratch )
 			{
-				NX_FREE(vscratch);
+				hullCoreFree(vscratch);
 			}
 		}
 	}
@@ -3135,7 +3193,7 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 	// this pointer is usually freed in ReleaseHull()
 	if ( vsource )
 	{
-		NX_FREE(vsource);
+		hullCoreFree(vsource);
 	}
 
 
@@ -3144,16 +3202,60 @@ HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           //
 
 
 
+bool computeHull(const HullRequest& request, HullMesh& mesh)
+{
+	unsigned int hullFlags = QF_DEFAULT;
+	if (request.forceTriangles)
+	{
+		hullFlags |= QF_TRIANGLES;
+	}
+	if (request.useSkinWidth)
+	{
+		hullFlags |= QF_SKIN_WIDTH;
+	}
+	if (request.reverseTriangleOrder)
+	{
+		hullFlags |= QF_REVERSE_ORDER;
+	}
+
+	HullDesc desc;
+	desc.mFlags = hullFlags;
+	desc.mMaxVertices = request.maxVertices;
+	desc.mSkinWidth = request.skinWidth;
+	desc.mNormalEpsilon = request.normalEpsilon;
+	desc.mVertexStride = request.vertexStride;
+	desc.mVcount = request.vertexCount;
+	desc.mVertices = const_cast<double*>(request.vertices);
+
+	HullLibrary library;
+	HullResult result;
+	const HullError error = library.CreateConvexHull(desc, result);
+	if (error != QE_OK)
+	{
+		library.ReleaseResult(result);
+		return false;
+	}
+
+	mesh.polygons = result.mPolygons;
+	mesh.vertexCount = result.mNumOutputVertices;
+	mesh.faceCount = result.mNumFaces;
+	mesh.vertices.assign(result.mOutputVertices, result.mOutputVertices + result.mNumOutputVertices * 3);
+	mesh.indices.assign(result.mIndices, result.mIndices + result.mNumIndices);
+
+	library.ReleaseResult(result);
+	return true;
+}
+
 HullError HullLibrary::ReleaseResult(HullResult &result) // release memory allocated for this result, we are done with it.
 {
 	if ( result.mOutputVertices )
 	{
-		NX_FREE(result.mOutputVertices);
+		hullCoreFree(result.mOutputVertices);
 		result.mOutputVertices = 0;
 	}
 	if ( result.mIndices )
 	{
-		NX_FREE(result.mIndices);
+		hullCoreFree(result.mIndices);
 		result.mIndices = 0;
 	}
 	return QE_OK;
@@ -3441,7 +3543,7 @@ bool  HullLibrary::CleanupVertices(unsigned int svcount,
 
 void HullLibrary::BringOutYourDead(const double *verts,unsigned int vcount, double *overts,unsigned int &ocount,unsigned int *indices,unsigned indexcount)
 {
-	unsigned int *used = (unsigned int *)NX_ALLOC(sizeof(unsigned int)*vcount, CONVEX_TEMP );
+	unsigned int *used = (unsigned int *)hullCoreAlloc(sizeof(unsigned int)*vcount);
 	memset(used,0,sizeof(unsigned int)*vcount);
 
 	ocount = 0;
@@ -3473,7 +3575,7 @@ void HullLibrary::BringOutYourDead(const double *verts,unsigned int vcount, doub
 		}
 	}
 
-	NX_FREE(used);
+	hullCoreFree(used);
 }
 
 
@@ -3641,5 +3743,8 @@ double HullLibrary::ComputeNormal(double *n,const double *A,const double *B,cons
 	n[2] = vw_z * mag;
 
 	return mag;
+}
+
+}
 }
 

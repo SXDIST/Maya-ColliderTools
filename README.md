@@ -6,7 +6,7 @@ ColliderTools is an Autodesk Maya 2027 C++ plugin for quickly generating collisi
 
 - Axis-aligned box colliders
 - Oriented box colliders
-- Convex hull colliders through bundled DDConvexHull / StanHull code
+- Convex hull colliders through the ColliderTools hull module derived from DDConvexHull / StanHull
 - Cylinder colliders
 - Capsule colliders
 - Object and component selection support
@@ -32,14 +32,14 @@ The build expects `DEVKIT_LOCATION` to point at the Maya devkit root that contai
 Example local build:
 
 ```bash
-DEVKIT_LOCATION="C:/maya_devkits/2027/devkitBase" cmake -S . -B build-vs2026-devkitbase-env -G "Visual Studio 18 2026" -A x64
-DEVKIT_LOCATION="C:/maya_devkits/2027/devkitBase" cmake --build build-vs2026-devkitbase-env --config Release
+DEVKIT_LOCATION="C:/maya_devkits/2027/devkitBase" cmake -S . -B build -G "Visual Studio 18 2026" -A x64
+DEVKIT_LOCATION="C:/maya_devkits/2027/devkitBase" cmake --build build --config Release
 ```
 
 The compiled plugin is produced at:
 
 ```text
-build-vs2026-devkitbase-env/Release/ColliderTools.mll
+build/Release/ColliderTools.mll
 ```
 
 If your installed Visual Studio generator differs, use a separate build directory. Do not reuse a CMake build directory with a different generator.
@@ -50,12 +50,36 @@ In Maya's Python tab, load the compiled plugin:
 
 ```python
 import maya.cmds as cmds
-cmds.loadPlugin(r"C:/path/to/collider-tools/build-vs2026-devkitbase-env/Release/ColliderTools.mll")
+cmds.loadPlugin(r"C:/path/to/collider-tools/build/Release/ColliderTools.mll")
 ```
 
-## Install the shelf
+## Production install
 
-The shelf scripts are separate from the compiled plugin. From Maya's Python tab:
+After building `build/Release/ColliderTools.mll`, drag `scripts/installColliderTools.py` into Maya. It installs the plugin, scripts, icons, and shelf into the current Maya user's module directory.
+
+The drag-and-drop installer looks for `ColliderTools.mll` in either:
+
+- the repository build output: `build/Release/ColliderTools.mll`
+- the same folder layout as a packaged installer: `ColliderTools.mll` next to `scripts/` and `icons/`
+
+The installer can also be run from Maya's Python tab:
+
+```python
+import sys
+sys.path.append(r"C:/path/to/collider-tools/scripts")
+import installColliderTools
+installColliderTools.run()
+```
+
+Pass an explicit plugin path when installing from a custom packaged build:
+
+```python
+installColliderTools.install(r"C:/path/to/ColliderTools.mll")
+```
+
+## Install the shelf only
+
+For development, the shelf scripts can still be loaded directly from the repository:
 
 ```python
 import sys
@@ -71,7 +95,7 @@ source "C:/path/to/collider-tools/scripts/installColliderToolsShelf.mel";
 installColliderToolsShelf();
 ```
 
-The Python shelf loader first checks whether `ColliderTools` is already loaded. If not, it attempts to load the local build output under `build-vs2026-devkitbase-env/Release/ColliderTools.mll` relative to the repository root.
+The Python shelf loader first checks whether `ColliderTools` is already loaded. If not, it attempts to load the local build output under `build/Release/ColliderTools.mll` relative to the repository root.
 
 ## Command examples
 
@@ -106,14 +130,14 @@ Supported flags include:
 `-history true` creates editable construction-history colliders instead of only baking the initial mesh.
 
 - `ctColliderPrimitive` drives procedural cylinder and capsule output and exposes `segments`, `radiusScale`, and `lengthScale`.
-- `DDConvexHull` drives procedural hull output and exposes hull attributes such as `maxVertices`.
+- `ctColliderHull` drives procedural hull output and exposes hull attributes such as `maxVertices`.
 - `ctColliderPrimitive` has Show Manipulator Tool integration for primitive radius/length controls.
 
 Known limitation: Maya's exact native in-view editor overlay for Autodesk primitives is not exposed as a simple public widget. ColliderTools uses public `MPxManipContainer` APIs where stable. Procedural hull In-View integration is currently treated as experimental and should remain disabled until the crash source is fully isolated.
 
 ## Production notes
 
-Before publishing a production build, use project-owned Autodesk Maya node IDs. The current local-development `DDConvexHullNode::id` value is not suitable for broad distribution.
+Before publishing a production build, use project-owned Autodesk Maya node IDs. The current local-development `ColliderHullNode::id` value is not suitable for broad distribution.
 
 Generated build directories, compiled binaries, Python caches, local Claude files, and temporary image exports are intentionally excluded by `.gitignore`.
 
@@ -121,4 +145,4 @@ Generated build directories, compiled binaries, Python caches, local Claude file
 
 ColliderTools is released under the MIT License. See `LICENSE`.
 
-Bundled DDConvexHull and StanHull code retains its original MIT license headers. See `THIRD_PARTY_NOTICES.md`.
+ColliderTools hull code derived from DDConvexHull and StanHull retains the original MIT license headers where required. See `THIRD_PARTY_NOTICES.md`.

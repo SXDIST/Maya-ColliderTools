@@ -1,6 +1,6 @@
 #include "ColliderFit.h"
 
-#include "DDConvexHullUtils.h"
+#include "ColliderHull.h"
 
 #include <maya/MFnMesh.h>
 #include <maya/MItSelectionList.h>
@@ -95,7 +95,7 @@ MStatus appendMeshPoints(const MDagPath& inputPath, const MObject& component, MP
     }
 
     MIntArray indices;
-    status = DDConvexHullUtils::componentToVertexIDs(indices, meshPath.node(), component);
+    status = ColliderTools::componentToVertexIds(indices, meshPath.node(), component);
     if (!status)
     {
         return status;

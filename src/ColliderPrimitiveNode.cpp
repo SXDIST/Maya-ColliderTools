@@ -3,7 +3,7 @@
 #include "ColliderFit.h"
 #include "ColliderGeometry.h"
 
-#include "DDConvexHullUtils.h"
+#include "ColliderHull.h"
 
 #include <maya/MDataBlock.h>
 #include <maya/MDataHandle.h>
@@ -176,7 +176,7 @@ MStatus ColliderPrimitiveNode::compute(const MPlug& plug, MDataBlock& data)
                 }
 
                 MIntArray vertexIds;
-                status = DDConvexHullUtils::componentToVertexIDs(vertexIds, inputMesh, component);
+                status = ColliderTools::componentToVertexIds(vertexIds, inputMesh, component);
                 if (!status)
                 {
                     return status;

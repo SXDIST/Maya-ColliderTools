@@ -6,7 +6,10 @@ SHELF_NAME = "ColliderTools"
 PLUGIN_NAME = "ColliderTools"
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 ICON_DIR = os.path.join(ROOT_DIR, "icons")
-PLUGIN_PATH = os.path.join(ROOT_DIR, "build-vs2026-devkitbase-env", "Release", "ColliderTools.mll").replace("\\", "/")
+PLUGIN_PATHS = [
+    os.path.join(ROOT_DIR, "plug-ins", "ColliderTools.mll"),
+    os.path.join(ROOT_DIR, "build", "Release", "ColliderTools.mll"),
+]
 
 _preview_nodes = []
 _preview_source_selection = []
@@ -16,10 +19,12 @@ _preview_warning = ""
 def _ensure_plugin():
     if cmds.pluginInfo(PLUGIN_NAME, query=True, loaded=True):
         return True
-    if os.path.exists(PLUGIN_PATH):
-        cmds.loadPlugin(PLUGIN_PATH)
-        return True
-    cmds.warning("ColliderTools.mll is not loaded and was not found at: {0}".format(PLUGIN_PATH))
+    for plugin_path in PLUGIN_PATHS:
+        plugin_path = plugin_path.replace("\\", "/")
+        if os.path.exists(plugin_path):
+            cmds.loadPlugin(plugin_path)
+            return True
+    cmds.warning("ColliderTools.mll is not loaded and was not found in the installed module or local build output.")
     return False
 
 

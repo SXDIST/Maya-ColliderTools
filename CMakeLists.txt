@@ -18,10 +18,10 @@ set(SOURCE_FILES
     src/ColliderFit.cpp
     src/ColliderPrimitiveManip.cpp
     src/ColliderPrimitiveNode.cpp
-    src/DDConvexHullPlugin.cpp
-    src/DDConvexHullNode.cpp
-    src/DDConvexHullUtils.cpp
-    src/StanHull/hull.cpp
+    src/ColliderToolsPlugin.cpp
+    src/ColliderHullNode.cpp
+    src/ColliderHull.cpp
+    src/ColliderHullCore.cpp
 )
 
 set(LIBRARIES
