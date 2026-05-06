@@ -1,0 +1,50 @@
+# CMake / build outputs
+build*/
+build-vs2026-devkitbase-env/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+install_local_manifest.txt
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.dir/
+
+# Compiled binaries and debug symbols
+*.mll
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.obj
+*.exe
+*.recipe
+*.tlog
+*.lastbuildstate
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Maya temporary/crash files
+*.dmp
+*.ma.autosave
+*.mb.autosave
+maya_sceneClipBoard.*
+
+# Local/editor files
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local Claude/session files
+.claude/
+
+# Temporary source image exports; production icons live in icons/
+iloveimg-resized/

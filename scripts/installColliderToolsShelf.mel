@@ -1,0 +1,10 @@
+global proc installColliderToolsShelf()
+{
+    python("import sys");
+    python("script_path = r'C:/Users/targaryen/source/repos/maya/collider-tools/scripts'");
+    python("\nif script_path not in sys.path:\n    sys.path.append(script_path)");
+    python("import importlib");
+    python("import colliderTools");
+    python("importlib.reload(colliderTools)");
+    python("colliderTools.install_shelf()");
+}
