@@ -101,5 +101,9 @@ def run():
     return result
 
 
+def onMayaDroppedPythonFile(*_):
+    return run()
+
+
 if __name__ == "__main__":
     run()
